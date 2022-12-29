@@ -5,6 +5,8 @@ import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.file.Files
+import java.nio.file.Paths
 
 
 fun main() {
@@ -23,9 +25,13 @@ fun main() {
         if (collectorNumber.find { !it.isDigit() && !it.isLetter() } != null) {
             throw Exception("Invalid card collector number: $collectorNumber")
         }
-        val imageDownloadUrl = (card["image_uris"] as JsonObject)["png"]
+        val imageDownloadUrl = (card["image_uris"] as JsonObject)["png"].toString().trim('\"')
 
-        println("Filename: $name-$collectorNumber-$set, url: $imageDownloadUrl")
+        val imageName = "$name-$collectorNumber-$set"
+//        URL(imageDownloadUrl).openStream().use { inputStream ->
+//            Files.copy(inputStream, Paths.get("C:\\AndroidProjects\\ScryfallMTGDownloader\\out\\$imageName.png"))
+//        }
+        println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
     }
 
     if (json.has("next_page")) {
