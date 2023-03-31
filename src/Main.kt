@@ -34,10 +34,10 @@ private fun downloadCards(url: String, page: Int) {
 
         val imageName = "$name-$collectorNumber-$set"
         URL(imageDownloadUrl).openStream().use { inputStream ->
-            if (File("C:\\AndroidProjects\\ScryfallMTGDownloader\\out\\$imageName.png").exists()) {
+            if (Files.exists(Paths.get("out\\$imageName.png"))) {
                 System.err.println("Image already exists: $imageName")
             } else {
-                Files.copy(inputStream, Paths.get("C:\\AndroidProjects\\ScryfallMTGDownloader\\out\\$imageName.png"))
+                Files.copy(inputStream, Paths.get("out\\$imageName.png"))
             }
         }
         println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
