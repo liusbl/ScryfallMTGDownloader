@@ -6,24 +6,39 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 
 // Search queries to find lands:
 // t:basic unique:prints
 // t:basic unique:prints is:fullart (Downloads all basic land cards plus fullart cards)
 //
+@OptIn(ExperimentalTime::class)
 fun main() {
-    downloadCards(
-        "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set",
-        0
-    )
+    println("Start")
+    val timedResult = measureTimedValue {
+        downloadCards(
+            "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set",
+            0,
+            DownloadResult.Empty
+        )
+    }
+    val result = timedResult.value
+    println("---------------------------------------")
+    println("Took: ${timedResult.duration}")
+    println("Downloaded card count: ${result.downloadedCardList.size}")
+    println("Downloaded card list:")
+    println(result.downloadedCardList)
 }
 
-private fun downloadCards(url: String, page: Int) {
+private fun downloadCards(url: String, page: Int, result: DownloadResult): DownloadResult {
     println("Downloading cards from page $page, via url: $url")
     val json = getPageJson(url)
 
     val cards = json["data"].asJsonArray
+
+    val downloadedCardList = mutableListOf<String>()
 
     cards.forEach { card ->
         card as JsonObject
@@ -41,16 +56,22 @@ private fun downloadCards(url: String, page: Int) {
                 System.err.println("Image already exists: $imageName")
             } else {
                 Files.copy(inputStream, Paths.get("out\\Lands\\$imageName.png"))
+                downloadedCardList.add("$imageName.png")
             }
         }
         println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
     }
 
     println("---------------------------------------")
-    if (json.has("next_page")) {
-        downloadCards(json["next_page"].toString().trim('\"'), page + 1)
+    return if (json.has("next_page")) {
+        downloadCards(
+            url = json["next_page"].toString().trim('\"'),
+            page = page + 1,
+            result = result.copy(downloadedCardList = result.downloadedCardList + downloadedCardList)
+        )
     } else {
         println("Finished")
+        result
     }
 }
 
@@ -70,4 +91,12 @@ private fun getPageJson(url: String): JsonObject {
 
     val gson = Gson()
     return gson.fromJson(response.toString(), JsonObject::class.java)
+}
+
+data class DownloadResult(
+    val downloadedCardList: List<String>
+) {
+    companion object {
+        val Empty = DownloadResult(emptyList())
+    }
 }
