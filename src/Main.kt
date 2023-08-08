@@ -51,10 +51,10 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
         val imageDownloadUrl = (card["image_uris"] as JsonObject)["png"].toString().trim('\"')
 
         val imageName = "$name-$collectorNumber-$set"
-        URL(imageDownloadUrl).openStream().use { inputStream ->
-            if (Files.exists(Paths.get("out\\Lands\\$imageName.png"))) {
-                System.err.println("Image already exists: $imageName")
-            } else {
+        if (Files.exists(Paths.get("out\\Lands\\$imageName.png"))) {
+            System.err.println("Image already exists: $imageName")
+        } else {
+            URL(imageDownloadUrl).openStream().use { inputStream ->
                 Files.copy(inputStream, Paths.get("out\\Lands\\$imageName.png"))
                 downloadedCardList.add("$imageName.png")
             }
