@@ -26,7 +26,7 @@ fun main() {
     }
     val result = timedResult.value
     println("---------------------------------------")
-    println("Took: ${timedResult.duration}")
+    println("Elapsed: ${timedResult.duration}")
     println("Downloaded card count: ${result.downloadedCardList.size}")
     println("Downloaded card list:")
     println(result.downloadedCardList)
