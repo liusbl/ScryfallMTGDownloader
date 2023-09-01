@@ -59,9 +59,9 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
             URL(imageDownloadUrl).openStream().use { inputStream ->
                 Files.copy(inputStream, Paths.get("out\\Lands\\$imageName.png"))
                 downloadedCardList.add("$imageName.png")
+                println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
             }
         }
-        println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
     }
 
     println("---------------------------------------")
