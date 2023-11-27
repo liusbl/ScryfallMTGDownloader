@@ -6,7 +6,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
-import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
 
@@ -16,7 +15,6 @@ import kotlin.time.measureTimedValue
 //
 // To find the card in scryfall.com from the image name, you can use this search syntax: "set:abc cn:123"
 //
-@OptIn(ExperimentalTime::class)
 fun main() {
     println("Start")
     val timedResult = measureTimedValue {
@@ -50,9 +48,15 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
         if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' } != null) {
             throw Exception("Invalid card collector number: $collectorNumber")
         }
-        val imageDownloadUrl = (card["image_uris"] as JsonObject)["png"].toString().trim('\"')
-
         val imageName = "$name-$collectorNumber-$set"
+
+        val imageUris = card["image_uris"] as? JsonObject
+        if (imageUris == null) {
+            System.err.println("Card does not contain \"image_uris\" object. imageName: $imageName")
+            return@forEach
+        }
+        val imageDownloadUrl = imageUris["png"].toString().trim('\"')
+
         if (Files.exists(Paths.get("out\\Lands\\$imageName.png"))) {
             System.err.println("Image already exists: $imageName")
         } else {
