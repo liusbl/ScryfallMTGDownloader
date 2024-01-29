@@ -12,7 +12,6 @@ import kotlin.time.measureTimedValue
 
 // Search queries to find lands:
 // t:basic unique:prints
-// t:basic unique:prints is:fullart (Downloads all basic land cards plus fullart cards)
 //
 // To find the card in scryfall.com from the image name, you can use this search syntax: "set:abc cn:123"
 //
