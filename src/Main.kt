@@ -45,8 +45,10 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
         card as JsonObject
         val name = card["name"].toString().filter { it != '\"' }
         val set = card["set"].toString().filter { it != '\"' }
-        val collectorNumber = card["collector_number"].toString().filter { it != '\"' }
-        if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' } != null) {
+            val collectorNumber = card["collector_number"].toString().filter { it != '\"' }
+
+        // '-' Adds support for cards like this https://scryfall.com/card/plst/JMP-50/island
+        if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' && it != '-' } != null) {
             error("Invalid card collector number: $collectorNumber")
         }
         val imageName = "$name-$collectorNumber-$set"
