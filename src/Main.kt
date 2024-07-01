@@ -2,6 +2,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -10,6 +11,8 @@ import java.nio.file.Paths
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
+private const val LANDS_FOLDER_PATH = "out\\Lands"
+private const val NEW_LANDS_FOLDER_PATH = "out\\Lands\\new"
 
 // Search queries to find lands:
 // t:basic unique:prints
@@ -20,10 +23,12 @@ import kotlin.time.measureTimedValue
 fun main() {
     println("Start")
     val timedResult = measureTimedValue {
+        val downloadLocation = createLandsFolder()
         downloadCards(
-            "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set",
-            0,
-            DownloadResult.Empty
+            downloadLocation = downloadLocation,
+            url = "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set",
+            page = 0,
+            result = DownloadResult.Empty
         )
     }
     val result = timedResult.value
@@ -34,7 +39,12 @@ fun main() {
     println(result.downloadedCardList)
 }
 
-private fun downloadCards(url: String, page: Int, result: DownloadResult): DownloadResult {
+private fun downloadCards(
+    downloadLocation: DownloadLocation,
+    url: String,
+    page: Int,
+    result: DownloadResult
+): DownloadResult {
     println("Downloading cards from page $page, via url: $url")
     val json = getPageJson(url)
 
@@ -59,9 +69,9 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
 
             val imageUris = card["image_uris"] as? JsonObject
             if (imageUris == null) {
-                downloadMultipleFaceCards(card, imageName, collectorNumber, set, downloadedCardList)
+                downloadMultipleFaceCards(downloadLocation, card, imageName, collectorNumber, set, downloadedCardList)
             } else {
-                downloadImage(imageUris, imageName, downloadedCardList)
+                downloadImage(downloadLocation, imageUris, imageName, downloadedCardList)
             }
         }
     }
@@ -69,6 +79,7 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
     println("---------------------------------------")
     return if (json.has("next_page")) {
         downloadCards(
+            downloadLocation = downloadLocation,
             url = json["next_page"].toString().trim('\"'),
             page = page + 1,
             result = result.copy(downloadedCardList = result.downloadedCardList + downloadedCardList)
@@ -98,6 +109,7 @@ private fun getPageJson(url: String): JsonObject {
 }
 
 private fun downloadMultipleFaceCards(
+    downloadLocation: DownloadLocation,
     card: JsonObject,
     imageName: String,
     collectorNumber: String,
@@ -122,27 +134,58 @@ private fun downloadMultipleFaceCards(
                 //  so we use the face name.
                 val cardFaceName = cardFace["name"].toString().filter { it != '\"' }
                 val cardFaceImageName = "$cardFaceName-$collectorNumber-$set-face-${index + 1}"
-                downloadImage(cardFaceImageUris, cardFaceImageName, downloadedCardList)
+                downloadImage(downloadLocation, cardFaceImageUris, cardFaceImageName, downloadedCardList)
             }
         }
     }
 }
 
 private fun downloadImage(
+    downloadLocation: DownloadLocation,
     imageUris: JsonObject,
     imageName: String,
     downloadedCardList: MutableList<String>
 ) {
     val imageDownloadUrl = imageUris["png"].toString().trim('\"')
-    if (Files.exists(Paths.get("out\\Lands\\$imageName.png"))) {
+
+    val folder = when (downloadLocation) {
+        DownloadLocation.Initial -> LANDS_FOLDER_PATH
+        DownloadLocation.Update -> NEW_LANDS_FOLDER_PATH
+    }
+    if (Files.exists(Paths.get("$LANDS_FOLDER_PATH\\$imageName.png")) ||
+        Files.exists(Paths.get("$NEW_LANDS_FOLDER_PATH\\$imageName.png"))
+    ) {
         System.err.println("Image already exists: $imageName")
     } else {
         URL(imageDownloadUrl).openStream().use { inputStream ->
-            Files.copy(inputStream, Paths.get("out\\Lands\\$imageName.png"))
+            Files.copy(inputStream, Paths.get("$folder\\$imageName.png"))
             downloadedCardList.add("$imageName.png")
             println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
         }
     }
+}
+
+private fun createLandsFolder(): DownloadLocation {
+    val landsFolder = File(LANDS_FOLDER_PATH)
+    return if (landsFolder.exists()) {
+        if (landsFolder.list()?.isNotEmpty() == true) {
+            val newLandsFolder = File(NEW_LANDS_FOLDER_PATH)
+            if (!newLandsFolder.exists()) {
+                newLandsFolder.mkdirs()
+            }
+            DownloadLocation.Update
+        } else {
+            DownloadLocation.Initial
+        }
+    } else {
+        landsFolder.mkdirs()
+        DownloadLocation.Initial
+    }
+}
+
+enum class DownloadLocation {
+    Initial,
+    Update
 }
 
 data class DownloadResult(
