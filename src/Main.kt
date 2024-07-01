@@ -7,6 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
 
@@ -15,6 +16,7 @@ import kotlin.time.measureTimedValue
 //
 // To find the card in scryfall.com from the image name, you can use this search syntax: "set:abc cn:123"
 //
+@OptIn(ExperimentalTime::class)
 fun main() {
     println("Start")
     val timedResult = measureTimedValue {
