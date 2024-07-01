@@ -46,19 +46,23 @@ private fun downloadCards(url: String, page: Int, result: DownloadResult): Downl
         card as JsonObject
         val name = card["name"].toString().filter { it != '\"' }
         val set = card["set"].toString().filter { it != '\"' }
-            val collectorNumber = card["collector_number"].toString().filter { it != '\"' }
-
-        // '-' Adds support for cards like this https://scryfall.com/card/plst/JMP-50/island
-        if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' && it != '-' } != null) {
-            error("Invalid card collector number: $collectorNumber")
-        }
-        val imageName = "$name-$collectorNumber-$set"
-
-        val imageUris = card["image_uris"] as? JsonObject
-        if (imageUris == null) {
-            downloadMultipleFaceCards(card, imageName, collectorNumber, set, downloadedCardList)
+        val collectorNumber = card["collector_number"].toString().filter { it != '\"' }
+        val imageStatus = card["image_status"].toString().filter { it != '\"' }
+        if (imageStatus == "placeholder") {
+            System.err.println("Image is a placeholder: $name")
         } else {
-            downloadImage(imageUris, imageName, downloadedCardList)
+            // '-' Adds support for cards like this https://scryfall.com/card/plst/JMP-50/island
+            if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' && it != '-' } != null) {
+                error("Invalid card collector number: $collectorNumber")
+            }
+            val imageName = "$name-$collectorNumber-$set"
+
+            val imageUris = card["image_uris"] as? JsonObject
+            if (imageUris == null) {
+                downloadMultipleFaceCards(card, imageName, collectorNumber, set, downloadedCardList)
+            } else {
+                downloadImage(imageUris, imageName, downloadedCardList)
+            }
         }
     }
 
