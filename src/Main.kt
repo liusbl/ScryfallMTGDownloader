@@ -59,7 +59,7 @@ private fun downloadCards(
         val collectorNumber = card["collector_number"].toString().filter { it != '\"' }
         val imageStatus = card["image_status"].toString().filter { it != '\"' }
         if (imageStatus == "placeholder") {
-            System.err.println("Image is a placeholder: $name")
+            System.err.println("Image is a placeholder: $url")
         } else {
             // '-' Adds support for cards like this https://scryfall.com/card/plst/JMP-50/island
             if (collectorNumber.find { !it.isDigit() && !it.isLetter() && it != '★' && it != '-' } != null) {
