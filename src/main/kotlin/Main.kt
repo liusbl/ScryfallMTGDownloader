@@ -1,6 +1,9 @@
-import com.google.gson.Gson
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
+package org.liusbl.scryfall
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -11,8 +14,9 @@ import java.nio.file.Paths
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
-private const val LANDS_FOLDER_PATH = "out\\Lands"
-private const val NEW_LANDS_FOLDER_PATH = "out\\Lands\\new"
+private val SEPARATOR = File.separator
+private val LANDS_FOLDER_PATH = "out${SEPARATOR}Lands"
+private val NEW_LANDS_FOLDER_PATH = "out${SEPARATOR}Lands${SEPARATOR}new"
 
 // Search queries to find lands:
 // t:basic unique:prints
@@ -48,7 +52,11 @@ private fun downloadCards(
     println("Downloading cards from page $page, via url: $url")
     val json = getPageJson(url)
 
-    val cards = json["data"].asJsonArray
+    val cards = json["data"]?.jsonArray
+
+    if (cards == null) {
+        error("Page does not contain cards information in the form of a \"data\" field. Json: $json")
+    }
 
     val downloadedCardList = mutableListOf<String>()
 
@@ -78,7 +86,7 @@ private fun downloadCards(
     }
 
     println("---------------------------------------")
-    return if (json.has("next_page")) {
+    return if (json.containsKey("next_page")) {
         downloadCards(
             downloadLocation = downloadLocation,
             url = json["next_page"].toString().trim('\"'),
@@ -105,8 +113,7 @@ private fun getPageJson(url: String): JsonObject {
         }
     }
 
-    val gson = Gson()
-    return gson.fromJson(response.toString(), JsonObject::class.java)
+    return Json.decodeFromString<JsonObject>(response.toString())
 }
 
 private fun downloadMultipleFaceCards(
@@ -122,8 +129,8 @@ private fun downloadMultipleFaceCards(
     if (cardFaces == null) {
         error("Card does not contain \"image_uris\" object AND does not contain \"card_faces\". Investigate! imageName: $imageName")
     } else {
-        if (cardFaces.size() != 2) {
-            error("Card does not contain \"image_uris\" object but contains ${cardFaces.size()} \"card_faces\". Very unusual. Investigate! imageName: $imageName")
+        if (cardFaces.size != 2) {
+            error("Card does not contain \"image_uris\" object but contains ${cardFaces.size} \"card_faces\". Very unusual. Investigate! imageName: $imageName")
         }
         cardFaces.forEachIndexed { index, cardFace ->
             cardFace as JsonObject
@@ -153,13 +160,13 @@ private fun downloadImage(
         DownloadLocation.Initial -> LANDS_FOLDER_PATH
         DownloadLocation.Update -> NEW_LANDS_FOLDER_PATH
     }
-    if (Files.exists(Paths.get("$LANDS_FOLDER_PATH\\$imageName.png")) ||
-        Files.exists(Paths.get("$NEW_LANDS_FOLDER_PATH\\$imageName.png"))
+    if (Files.exists(Paths.get("$LANDS_FOLDER_PATH${SEPARATOR}$imageName.png")) ||
+        Files.exists(Paths.get("$NEW_LANDS_FOLDER_PATH${SEPARATOR}$imageName.png"))
     ) {
         System.err.println("Image already exists: $imageName")
     } else {
         URL(imageDownloadUrl).openStream().use { inputStream ->
-            Files.copy(inputStream, Paths.get("$folder\\$imageName.png"))
+            Files.copy(inputStream, Paths.get("$folder${SEPARATOR}$imageName.png"))
             downloadedCardList.add("$imageName.png")
             println("Stored image. Filename: $imageName, url: $imageDownloadUrl")
         }
