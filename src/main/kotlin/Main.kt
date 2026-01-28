@@ -23,16 +23,44 @@ private val NEW_LANDS_FOLDER_PATH = "out${SEPARATOR}Lands${SEPARATOR}new"
 //
 // To find the card in scryfall.com from the image name, you can use this search syntax: "set:abc cn:123"
 //
+
+data class LaunchConfig(
+    val landType: LandType,
+    val imageType: ImageType
+)
+
+enum class LandType {
+    All,
+    Forest
+}
+
+enum class ImageType {
+    Png,
+    ArtCrop
+}
+
 @OptIn(ExperimentalTime::class)
 fun main() {
-    println("Start")
+    val launchConfig = LaunchConfig(
+        landType = LandType.Forest,
+        imageType = ImageType.ArtCrop
+    )
+
+    println("Start. Launch config: $launchConfig")
+
+    val url = when (launchConfig.landType) {
+        LandType.All -> "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set"
+        LandType.Forest -> "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints+name%3Aforest&unique=cards&as=grid&order=set"
+    }
+
     val timedResult = measureTimedValue {
         val downloadLocation = createLandsFolder()
         downloadCards(
             downloadLocation = downloadLocation,
-            url = "https://api.scryfall.com/cards/search?q=t%3Abasic+unique%3Aprints&unique=cards&as=grid&order=set",
+            url = url,
             page = 0,
-            result = DownloadResult.Empty
+            result = DownloadResult.Empty,
+            launchConfig = launchConfig
         )
     }
     val result = timedResult.value
@@ -47,7 +75,8 @@ private fun downloadCards(
     downloadLocation: DownloadLocation,
     url: String,
     page: Int,
-    result: DownloadResult
+    result: DownloadResult,
+    launchConfig: LaunchConfig
 ): DownloadResult {
     println("Downloading cards from page $page, via url: $url")
     val json = getPageJson(url)
@@ -78,9 +107,9 @@ private fun downloadCards(
 
             val imageUris = card["image_uris"] as? JsonObject
             if (imageUris == null) {
-                downloadMultipleFaceCards(downloadLocation, card, imageName, collectorNumber, set, downloadedCardList)
+                downloadMultipleFaceCards(launchConfig, downloadLocation, card, imageName, collectorNumber, set, downloadedCardList)
             } else {
-                downloadImage(downloadLocation, imageUris, imageName, downloadedCardList)
+                downloadImage(launchConfig, downloadLocation, imageUris, imageName, downloadedCardList)
             }
         }
     }
@@ -91,7 +120,8 @@ private fun downloadCards(
             downloadLocation = downloadLocation,
             url = json["next_page"].toString().trim('\"'),
             page = page + 1,
-            result = result.copy(downloadedCardList = result.downloadedCardList + downloadedCardList)
+            result = result.copy(downloadedCardList = result.downloadedCardList + downloadedCardList),
+            launchConfig = launchConfig
         )
     } else {
         println("Finished")
@@ -117,6 +147,7 @@ private fun getPageJson(url: String): JsonObject {
 }
 
 private fun downloadMultipleFaceCards(
+    launchConfig: LaunchConfig,
     downloadLocation: DownloadLocation,
     card: JsonObject,
     imageName: String,
@@ -142,19 +173,25 @@ private fun downloadMultipleFaceCards(
                 //  so we use the face name.
                 val cardFaceName = cardFace["name"].toString().filter { it != '\"' }
                 val cardFaceImageName = "$cardFaceName-$collectorNumber-$set-face-${index + 1}"
-                downloadImage(downloadLocation, cardFaceImageUris, cardFaceImageName, downloadedCardList)
+                downloadImage(launchConfig, downloadLocation, cardFaceImageUris, cardFaceImageName, downloadedCardList)
             }
         }
     }
 }
 
 private fun downloadImage(
+    launchConfig: LaunchConfig,
     downloadLocation: DownloadLocation,
     imageUris: JsonObject,
     imageName: String,
-    downloadedCardList: MutableList<String>
+    downloadedCardList: MutableList<String>,
 ) {
-    val imageDownloadUrl = imageUris["png"].toString().trim('\"')
+    val imageTypeString = when (launchConfig.imageType) {
+        ImageType.Png -> "png"
+        ImageType.ArtCrop -> "art_crop"
+    }
+
+    val imageDownloadUrl = imageUris[imageTypeString].toString().trim('\"')
 
     val folder = when (downloadLocation) {
         DownloadLocation.Initial -> LANDS_FOLDER_PATH
